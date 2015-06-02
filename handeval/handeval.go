@@ -270,42 +270,79 @@ func Evaluate(cards [5]uint32) uint32 {
     return (Face & cards[0]) >> 4
 }
 
+var face_values = map[uint32]string{
+    Face & King: "king",
+    Face & Queen: "queen",
+    Face & Jack: "jack",
+    Face & Ten: "ten",
+    Face & Nine: "nine",
+    Face & Eight: "eight",
+    Face & Seven: "seven",
+    Face & Six: "six",
+    Face & Five: "five",
+    Face & Four: "four",
+    Face & Three: "three",
+    Face & Two: "two",
+    Face & Ace: "ace",
+    0: "none",
+}
+
+var face_values_plural = map[uint32]string{
+    Face & King: "kings",
+    Face & Queen: "queens",
+    Face & Jack: "jacks",
+    Face & Ten: "tens",
+    Face & Nine: "nines",
+    Face & Eight: "eights",
+    Face & Seven: "sevens",
+    Face & Six: "sixes",
+    Face & Five: "fives",
+    Face & Four: "fours",
+    Face & Three: "threes",
+    Face & Two: "twos",
+    Face & Ace: "aces",
+    0: "none",
+}
+
 func ToString(evaluation uint32) string {
     if 0x0000000F & evaluation != 0 {
-        // (Face & cards[0]) >> 4
-        return "High card"
+        return "High card, " + face_values[evaluation << 4]
     }
     if 0x000000F0 & evaluation != 0 && 0xFFFFFF0F & evaluation == 0 {
         // Face & pair_card
-        return "Pair"
+        return "Pair of " + face_values_plural[evaluation]
     }
     if 0x00000FF0 & evaluation != 0 {
         // ((Face & high_pair_card) << 4) | (Face & low_pair_card)
-        return "Two pair"
+        return "Two pair, " + face_values_plural[0x00000F00 & evaluation >> 4] + " and " + face_values_plural[0x000000F0 & evaluation]
     }
     if 0x0000F000 & evaluation != 0 {
         // (Face & three_of_a_kind_card) << 8
-        return "Three of a kind"
+        return "Three of a kind, " + face_values_plural[evaluation >> 8]
     }
     if 0x000F0000 & evaluation != 0 {
         // (Face & straight_high_card) << 12
-        return "Straight"
+        return "Straight, " + face_values[evaluation >> 12] + " high"
     }
     if 0x00F00000 & evaluation != 0 && 0xFF0FFFFF & evaluation == 0 {
         // (Face & cards[0]) << 16
-        return "Flush"
+        return "Flush, " + face_values[evaluation >> 16] + " high"
     }
     if 0x0FF00000 & evaluation != 0 && 0xF00FFFFF & evaluation == 0 {
         // (Face & three_of_a_kind_card) << 20 | (Face & high_pair_card) << 16
-        return "Full house"
+        return "Full house, " + face_values_plural[0x0F000000 & evaluation >> 20] + " full of " + face_values_plural[0x00F00000 & evaluation >> 16]
     }
     if 0xF0000000 & evaluation != 0 && 0x0FFFFFFF & evaluation == 0 {
         // (Face & four_of_a_kind_card) << 24
-        return "Four of a kind"
+        return "Four of a kind, " + face_values_plural[evaluation >> 24]
     }
     if 0xFF000000 & evaluation != 0 {
         // (Face & straight_high_card | flush_suit) << 24
-        return "Royal or straight flush"
+        if 0xF0000000 & evaluation >> 24 == Face & Ace {
+            return "Royal flush"
+        } else {
+            return "Straight flush, " + face_values[0xF0000000 & evaluation >> 24] + " high"
+        }
     }
 
     panic("Unable to decode evaluation: " + string(evaluation))

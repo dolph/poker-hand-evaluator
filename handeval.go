@@ -1,6 +1,8 @@
 package main
 
 import "fmt"
+import "os"
+import "time"
 
 // 0x0000000F: Suit bits
 // 0x000FFFF0: Face value bits
@@ -30,10 +32,19 @@ const (
     Two uint32 = 0x000220
     Ace uint32 = 0x2001f0 // Both high and low.
 
-    AceSpades uint32 = Ace | Spades
     KingSpades uint32 = King | Spades
     QueenSpades uint32 = Queen | Spades
+    JackSpades uint32 = Jack | Spades
+    TenSpades uint32 = Ten | Spades
+    NineSpades uint32 = Nine | Spades
+    EightSpades uint32 = Eight | Spades
+    SevenSpades uint32 = Seven | Spades
+    SixSpades uint32 = Six | Spades
     FiveSpades uint32 = Five | Spades
+    FourSpades uint32 = Four | Spades
+    ThreeSpades uint32 = Three | Spades
+    TwoSpades uint32 = Two | Spades
+    AceSpades uint32 = Ace | Spades
 
     KingClubs uint32 = King | Clubs
     QueenClubs uint32 = Queen | Clubs
@@ -49,16 +60,61 @@ const (
     TwoClubs uint32 = Two | Clubs
     AceClubs uint32 = Ace | Clubs
 
+    KingDiamonds uint32 = King | Diamonds
+    QueenDiamonds uint32 = Queen | Diamonds
+    JackDiamonds uint32 = Jack | Diamonds
+    TenDiamonds uint32 = Ten | Diamonds
+    NineDiamonds uint32 = Nine | Diamonds
+    EightDiamonds uint32 = Eight | Diamonds
+    SevenDiamonds uint32 = Seven | Diamonds
+    SixDiamonds uint32 = Six | Diamonds
+    FiveDiamonds uint32 = Five | Diamonds
+    FourDiamonds uint32 = Four | Diamonds
+    ThreeDiamonds uint32 = Three | Diamonds
+    TwoDiamonds uint32 = Two | Diamonds
     AceDiamonds uint32 = Ace | Diamonds
 
+    KingHearts uint32 = King | Hearts
+    QueenHearts uint32 = Queen | Hearts
+    JackHearts uint32 = Jack | Hearts
+    TenHearts uint32 = Ten | Hearts
+    NineHearts uint32 = Nine | Hearts
+    EightHearts uint32 = Eight | Hearts
+    SevenHearts uint32 = Seven | Hearts
+    SixHearts uint32 = Six | Hearts
+    FiveHearts uint32 = Five | Hearts
+    FourHearts uint32 = Four | Hearts
+    ThreeHearts uint32 = Three | Hearts
+    TwoHearts uint32 = Two | Hearts
     AceHearts uint32 = Ace | Hearts
 )
 
+var Deck = [52]uint32{
+    KingSpades, QueenSpades, JackSpades, TenSpades, NineSpades, EightSpades,
+    SevenSpades, SixSpades, FiveSpades, FourSpades, ThreeSpades, TwoSpades,
+    AceSpades, KingClubs, QueenClubs, JackClubs, TenClubs, NineClubs,
+    EightClubs, SevenClubs, SixClubs, FiveClubs, FourClubs, ThreeClubs,
+    TwoClubs, AceClubs, KingDiamonds, QueenDiamonds, JackDiamonds, TenDiamonds,
+    NineDiamonds, EightDiamonds, SevenDiamonds, SixDiamonds, FiveDiamonds,
+    FourDiamonds, ThreeDiamonds, TwoDiamonds, AceDiamonds, KingHearts,
+    QueenHearts, JackHearts, TenHearts, NineHearts, EightHearts, SevenHearts,
+    SixHearts, FiveHearts, FourHearts, ThreeHearts, TwoHearts, AceHearts,
+}
+
 var strings = map[uint32]string{
-    AceSpades: "As",
     KingSpades: "Ks",
     QueenSpades: "Qs",
+    JackSpades: "Js",
+    TenSpades: "Ts",
+    NineSpades: "9s",
+    EightSpades: "8s",
+    SevenSpades: "7s",
+    SixSpades: "6s",
     FiveSpades: "5s",
+    FourSpades: "4s",
+    ThreeSpades: "3s",
+    TwoSpades: "2s",
+    AceSpades: "As",
 
     KingClubs: "Kc",
     QueenClubs: "Qc",
@@ -74,8 +130,32 @@ var strings = map[uint32]string{
     TwoClubs: "2c",
     AceClubs: "Ac",
 
+    KingDiamonds: "Kd",
+    QueenDiamonds: "Qd",
+    JackDiamonds: "Jd",
+    TenDiamonds: "Td",
+    NineDiamonds: "9d",
+    EightDiamonds: "8d",
+    SevenDiamonds: "7d",
+    SixDiamonds: "6d",
+    FiveDiamonds: "5d",
+    FourDiamonds: "4d",
+    ThreeDiamonds: "3d",
+    TwoDiamonds: "2d",
     AceDiamonds: "Ad",
 
+    KingHearts: "Kh",
+    QueenHearts: "Qh",
+    JackHearts: "Jh",
+    TenHearts: "Th",
+    NineHearts: "9h",
+    EightHearts: "8h",
+    SevenHearts: "7h",
+    SixHearts: "6h",
+    FiveHearts: "5h",
+    FourHearts: "4h",
+    ThreeHearts: "3h",
+    TwoHearts: "2h",
     AceHearts: "Ah",
 }
 
@@ -267,12 +347,9 @@ func value_to_string(card uint32) string {
     return values[(Face | Value) & card]
 }
 
-func evaluate(cards [5]uint32) string {
-    fmt.Println("Cards:", cards_to_string(cards))
-
+func evaluate(cards [5]uint32) uint32 {
     // Sort cards by face value from largest to smallest.
     cards = sort(cards)
-    // fmt.Println("Sorted:", cards_to_string(cards))
 
     // Check for flush.
     flush_suit := flush(cards)
@@ -280,23 +357,26 @@ func evaluate(cards [5]uint32) string {
     // Check for straight.
     straight_high_card := straight(cards)
 
-    // 0xFF00 0000
     if flush_suit != 0 && straight_high_card != 0 && straight_high_card == Ace {
-        fmt.Println((Face & straight_high_card | flush_suit) << 24)
-        return "Royal straight flush, " + value_to_string(straight_high_card) + " high"
+        // Royal flush
+        // fmt.Println("Royal straight flush, " + value_to_string(straight_high_card) + " high")
+        // 0xFF00 0000
+        return (Face & straight_high_card | flush_suit) << 24
     }
 
-    // 0xFF00 0000
     if flush_suit != 0 && straight_high_card != 0 {
-        fmt.Println((Face & straight_high_card | flush_suit) << 24)
-        return "Straight flush, " + value_to_string(straight_high_card) + " high"
+        // Straight flush
+        // 0xFF00 0000
+        // fmt.Println("Straight flush, " + value_to_string(straight_high_card) + " high")
+        return (Face & straight_high_card | flush_suit) << 24
     }
 
     four_of_a_kind_card := four_of_a_kind(cards)
-    // 0xF000 0000
     if four_of_a_kind_card != 0 {
-        fmt.Println((Face & four_of_a_kind_card) << 24)
-        return "Four of a kind, " + value_to_string(four_of_a_kind_card) + "s"
+        // Four of a kind
+        // 0xF000 0000
+        // fmt.Println("Four of a kind, " + value_to_string(four_of_a_kind_card) + "s")
+        return (Face & four_of_a_kind_card) << 24
     }
 
     // Check for three of a kind.
@@ -306,105 +386,197 @@ func evaluate(cards [5]uint32) string {
     high_pair_card := high_pair(cards)
     low_pair_card := low_pair(cards)
 
-    // 0xFF0 0000
     if three_of_a_kind_card != 0 && high_pair_card != 0 && Value & three_of_a_kind_card != Value & high_pair_card {
-        fmt.Println((Face & three_of_a_kind_card) << 20 | (Face & high_pair_card) << 16)
-        return "Full house, " + value_to_string(three_of_a_kind_card) + "s full of " + value_to_string(high_pair_card) + "s"
+        // Full house
+        // 0xFF0 0000
+        // fmt.Println("Full house, " + value_to_string(three_of_a_kind_card) + "s full of " + value_to_string(high_pair_card) + "s")
+        return (Face & three_of_a_kind_card) << 20 | (Face & high_pair_card) << 16
     }
     if three_of_a_kind_card != 0 && low_pair_card != 0 && Value & three_of_a_kind_card != Value & low_pair_card {
-        fmt.Println((Face & three_of_a_kind_card) << 20 | (Face & low_pair_card) << 16)
-        return "Full house, " + value_to_string(three_of_a_kind_card) + "s full of " + value_to_string(low_pair_card) + "s"
+        // Full house
+        // 0xFF0 0000
+        // fmt.Println("Full house, " + value_to_string(three_of_a_kind_card) + "s full of " + value_to_string(low_pair_card) + "s")
+        return (Face & three_of_a_kind_card) << 20 | (Face & low_pair_card) << 16
     }
 
-    // 0xF0 0000
     if flush_suit != 0 {
-        fmt.Println((Face & cards[0]) << 16)
-        return "Flush, " + value_to_string(cards[0]) + " high"
+        // Flush
+        // 0xF0 0000
+        // fmt.Println("Flush, " + value_to_string(cards[0]) + " high")
+        return (Face & cards[0]) << 16
     }
 
-    // 0xF 0000
     if straight_high_card != 0 {
-        fmt.Println((Face & straight_high_card) << 12)
-        return "Straight, " + value_to_string(straight_high_card) + " high"
+        // Straight
+        // 0xF 0000
+        // fmt.Println("Straight, " + value_to_string(straight_high_card) + " high")
+        return (Face & straight_high_card) << 12
     }
 
-    // 0xF000
     if three_of_a_kind_card != 0 {
-        fmt.Println((Face & three_of_a_kind_card) << 8)
-        return "Three of a kind, " + value_to_string(three_of_a_kind_card) + "s"
+        // Three of a kind
+        // 0xF000
+        // fmt.Println("Three of a kind, " + value_to_string(three_of_a_kind_card) + "s")
+        return (Face & three_of_a_kind_card) << 8
     }
 
-    // 0xFF0
     if high_pair_card != 0 && low_pair_card != 0 {
-        fmt.Println(((Face & high_pair_card) << 4) | (Face & low_pair_card))
-        return "Two pair, " + value_to_string(high_pair_card) + "s and " + value_to_string(low_pair_card) + "s"
+        // Two pair
+        // 0xFF0
+        // fmt.Println("Two pair, " + value_to_string(high_pair_card) + "s and " + value_to_string(low_pair_card) + "s")
+        return ((Face & high_pair_card) << 4) | (Face & low_pair_card)
     }
 
-    // 0xF0
     if high_pair_card != 0 {
-        fmt.Println((Face & high_pair_card))
-        return "Pair of " + value_to_string(high_pair_card) + "s"
+        // Pair
+        // 0xF0
+        // fmt.Println("Pair of " + value_to_string(high_pair_card) + "s")
+        return Face & high_pair_card
     }
     if low_pair_card != 0 {
-        fmt.Println((Face & low_pair_card))
-        return "Pair of " + value_to_string(low_pair_card) + "s"
+        // Pair
+        // 0xF0
+        // fmt.Println("Pair of " + value_to_string(low_pair_card) + "s")
+        return Face & low_pair_card
     }
 
+    // High card
     // 0xF
-    fmt.Println((Face & cards[0]) >> 4)
-    return "High card " + value_to_string(cards[0])
+    // fmt.Println("High card " + value_to_string(cards[0]))
+    return (Face & cards[0]) >> 4
+}
+
+func string_to_card(s string) uint32 {
+    var card uint32
+    switch s[0] {
+    case 'K':
+        card = King
+    case 'k':
+        card = King
+    case 'Q':
+        card = Queen
+    case 'q':
+        card = Queen
+    case 'J':
+        card = Jack
+    case 'j':
+        card = Jack
+    case 'T':
+        card = Ten
+    case 't':
+        card = Ten
+    case '9':
+        card = Nine
+    case '8':
+        card = Eight
+    case '7':
+        card = Seven
+    case '6':
+        card = Six
+    case '5':
+        card = Five
+    case '4':
+        card = Four
+    case '3':
+        card = Three
+    case '2':
+        card = Two
+    case 'A':
+        card = Ace
+    case 'a':
+        card = Ace
+    default:
+        panic("Unrecognized face value character (must be one of: KQJT98765432A)")
+    }
+    switch s[1] {
+    case 's':
+        card |= Spades
+    case 'c':
+        card |= Clubs
+    case 'd':
+        card |= Diamonds
+    case 'h':
+        card |= Hearts
+    default:
+        panic("Unrecognized suit character (must be one of: scdh)")
+    }
+
+    return card
+}
+
+func eval_to_string(evaluation uint32) string {
+    if 0x0000000F & evaluation != 0 {
+        // (Face & cards[0]) >> 4
+        return "High card"
+    }
+    if 0x000000F0 & evaluation != 0 && 0xFFFFFF0F & evaluation == 0 {
+        // Face & pair_card
+        return "Pair"
+    }
+    if 0x00000FF0 & evaluation != 0 {
+        // ((Face & high_pair_card) << 4) | (Face & low_pair_card)
+        return "Two pair"
+    }
+    if 0x0000F000 & evaluation != 0 {
+        // (Face & three_of_a_kind_card) << 8
+        return "Three of a kind"
+    }
+    if 0x000F0000 & evaluation != 0 {
+        // (Face & straight_high_card) << 12
+        return "Straight"
+    }
+    if 0x00F00000 & evaluation != 0 && 0xFF0FFFFF & evaluation == 0 {
+        // (Face & cards[0]) << 16
+        return "Flush"
+    }
+    if 0x0FF00000 & evaluation != 0 && 0xF00FFFFF & evaluation == 0 {
+        // (Face & three_of_a_kind_card) << 20 | (Face & high_pair_card) << 16
+        return "Full house"
+    }
+    if 0xF0000000 & evaluation != 0 && 0x0FFFFFFF & evaluation == 0 {
+        // (Face & four_of_a_kind_card) << 24
+        return "Four of a kind"
+    }
+    if 0xFF000000 & evaluation != 0 {
+        // (Face & straight_high_card | flush_suit) << 24
+        return "Royal or straight flush"
+    }
+
+    panic("Unable to decode evaluation: " + string(evaluation))
+}
+
+func benchmark() {
+    var cards [5]uint32
+    start := time.Now()
+    for a := 0; a < 52 - 4; a++ {
+        for b := a + 1; b < 52 - 3; b++ {
+            for c := b + 1; c < 52 - 2; c++ {
+                for d := c + 1; d < 52 - 1; d++ {
+                    for e := d + 1; e < 52; e++ {
+                        cards = [5]uint32{Deck[a], Deck[b], Deck[c], Deck[d], Deck[e]}
+                        evaluate(cards)
+                    }
+                }
+            }
+        }
+    }
+    end := time.Now()
+    fmt.Println(end.Sub(start))
 }
 
 func main() {
-    fmt.Println(evaluate([5]uint32{AceClubs, AceSpades, AceDiamonds, QueenSpades, AceHearts}))
-    fmt.Println("Four of a kind, aces")
-    fmt.Println()
+    if len(os.Args[1:]) == 0 {
+        benchmark()
+        return
+    }
 
-    fmt.Println(evaluate([5]uint32{SixClubs, TwoClubs, ThreeClubs, FourClubs, FiveClubs}))
-    fmt.Println("Straight flush, six high")
-    fmt.Println()
+    var hand [5]uint32
+    for i := 1; i <= len(os.Args[1:]); i++ {
+        hand[i - 1] = string_to_card(os.Args[i])
+    }
 
-    fmt.Println(evaluate([5]uint32{AceClubs, TwoClubs, ThreeClubs, FourClubs, FiveClubs}))
-    fmt.Println("Straight flush, five high")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{AceClubs, AceSpades, AceDiamonds, KingClubs, KingSpades}))
-    fmt.Println("Full house, aces full of kings")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{AceSpades, TenClubs, KingSpades, JackClubs, QueenSpades}))
-    fmt.Println("Straight, ace high")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{NineClubs, TenClubs, KingSpades, JackClubs, QueenSpades}))
-    fmt.Println("Straight, king high")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{AceSpades, TwoClubs, ThreeClubs, FourClubs, FiveClubs}))
-    fmt.Println("Straight, five high")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{KingClubs, AceClubs, AceSpades, QueenSpades, KingSpades}))
-    fmt.Println("Two pair, aces and kings")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{KingClubs, AceClubs, EightClubs, QueenSpades, AceSpades}))
-    fmt.Println("Pair of aces")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{KingClubs, AceHearts, EightClubs, QueenSpades, AceSpades}))
-    fmt.Println("Pair of aces")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{KingClubs, AceClubs, EightClubs, QueenSpades, KingSpades}))
-    fmt.Println("Pair of kings")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{AceClubs, QueenSpades, TenClubs, EightClubs, SixClubs}))
-    fmt.Println("High card ace")
-    fmt.Println()
-
-    fmt.Println(evaluate([5]uint32{SevenClubs, FiveSpades, FourClubs, ThreeClubs, TwoClubs}))
-    fmt.Println("High card seven")
-    fmt.Println()
+    fmt.Println(cards_to_string(hand))
+    evaluation := evaluate(hand)
+    fmt.Println(evaluation)
+    fmt.Println(eval_to_string(evaluation))
 }

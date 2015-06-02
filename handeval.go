@@ -2,35 +2,38 @@ package main
 
 import "fmt"
 
-// 0xF0000000: Suit bits
-// 0x0000FFFF: Face value bits
-// 0x0FFF0000: Unused bits
+// 0x0000000F: Suit bits
+// 0x000FFFF0: Face value bits
+// 0xFFF00000: Unused bits
 
 const (
-    Suit uint32 = 0xF0000
-    Spades uint32 = 0x80000
-    Clubs uint32 = 0x40000
-    Diamonds uint32 = 0x20000
-    Hearts uint32 = 0x10000
+    Suit uint32 =  0x00000F // Suit mask.
+    Face uint32 =  0x0000F0 // Face value bit mask.
+    Value uint32 = 0xFFFF00 // Bit value bit mask.
 
-    Value uint32 = 0x0FFFF
-    King uint32 = 0x1000
-    Queen uint32 = 0x0800
-    Jack uint32 = 0x0400
-    Ten uint32 = 0x0200
-    Nine uint32 = 0x0100
-    Eight uint32 = 0x0080
-    Seven uint32 = 0x0040
-    Six uint32 = 0x0020
-    Five uint32 = 0x0010
-    Four uint32 = 0x0008
-    Three uint32 = 0x0004
-    Two uint32 = 0x0002
-    Ace uint32 = 0x2001 // Both high and low.
+    Spades uint32 = 0x8
+    Clubs uint32 = 0x4
+    Diamonds uint32 = 0x2
+    Hearts uint32 = 0x1
+
+    King uint32 = 0x1000d0
+    Queen uint32 = 0x0800c0
+    Jack uint32 = 0x0400b0
+    Ten uint32 = 0x0200a0
+    Nine uint32 = 0x010090
+    Eight uint32 = 0x008080
+    Seven uint32 = 0x004070
+    Six uint32 = 0x002060
+    Five uint32 = 0x001050
+    Four uint32 = 0x000840
+    Three uint32 = 0x000430
+    Two uint32 = 0x000220
+    Ace uint32 = 0x2001f0 // Both high and low.
 
     AceSpades uint32 = Ace | Spades
     KingSpades uint32 = King | Spades
     QueenSpades uint32 = Queen | Spades
+    FiveSpades uint32 = Five | Spades
 
     KingClubs uint32 = King | Clubs
     QueenClubs uint32 = Queen | Clubs
@@ -46,23 +49,17 @@ const (
     TwoClubs uint32 = Two | Clubs
     AceClubs uint32 = Ace | Clubs
 
-    RoyalStraightFlush // 4 values
-    StraightFlush
-    FourOfAKind // 13 values
-    FullHouse // 156 (13 * 12) values
-    Flush // 13 values
-    Straight //
-    ThreeOfAKind // 13 values
-    TwoPair // 156 (13 * 12) values
-    OnePair // 13 values
-    HighCard // 13 values
+    AceDiamonds uint32 = Ace | Diamonds
 
+    AceHearts uint32 = Ace | Hearts
 )
 
 var strings = map[uint32]string{
     AceSpades: "As",
     KingSpades: "Ks",
     QueenSpades: "Qs",
+    FiveSpades: "5s",
+
     KingClubs: "Kc",
     QueenClubs: "Qc",
     JackClubs: "Jc",
@@ -75,6 +72,11 @@ var strings = map[uint32]string{
     FourClubs: "4c",
     ThreeClubs: "3c",
     TwoClubs: "2c",
+    AceClubs: "Ac",
+
+    AceDiamonds: "Ad",
+
+    AceHearts: "Ah",
 }
 
 var suits = map[uint32]string{
@@ -108,8 +110,6 @@ func flush(cards [5]uint32) uint32 {
 }
 
 func swap(cards [5]uint32, a int, b int) [5]uint32 {
-    fmt.Println("Swapping", a, "&", b)
-
     tmp := cards[a]
     cards[a] = cards[b]
     cards[b] = tmp
@@ -191,12 +191,56 @@ func sort(cards [5]uint32) [5]uint32 {
 
 func straight(cards [5]uint32) uint32 {
     if (Value & cards[0] >> 4) & (Value & cards[1] >> 3) & (Value & cards[2] >> 2) & (Value & cards[3] >> 1) & (Value & cards[4]) != 0 {
-        return Value & cards[0]
+        return cards[0]
     }
 
     // edge case: five high, with an Ace being (mis)sorted by it's high value
     if (Value & cards[1] >> 4) & (Value & cards[2] >> 3) & (Value & cards[3] >> 2) & (Value & cards[4] >> 1) & Value & cards[0] != 0 {
-        return Value & cards[1]
+        return cards[1]
+    }
+
+    return 0
+}
+
+func four_of_a_kind(cards [5]uint32) uint32 {
+    if (Value & cards[0]) & (Value & cards[1]) & (Value & cards[2]) & (Value & cards[3]) != 0 {
+        return cards[1]
+    }
+
+    if (Value & cards[1]) & (Value & cards[2]) & (Value & cards[3]) & (Value & cards[4]) != 0 {
+        return cards[1]
+    }
+
+    return 0
+}
+
+func three_of_a_kind(cards [5]uint32) uint32 {
+    if (Value & cards[0]) & (Value & cards[1]) & (Value & cards[2]) != 0 {
+        return cards[2]
+    }
+
+    if (Value & cards[1]) & (Value & cards[2]) & (Value & cards[3]) != 0 {
+        return cards[2]
+    }
+
+    if (Value & cards[2]) & (Value & cards[3]) & (Value & cards[4]) != 0 {
+        return cards[2]
+    }
+
+    return 0
+}
+
+func high_pair(cards [5]uint32) uint32 {
+    if (Value & cards[0]) & (Value & cards[1]) != 0 || (Value & cards[1]) & (Value & cards[2]) != 0 {
+        return cards[1]
+    }
+
+    return 0
+}
+
+func low_pair(cards [5]uint32) uint32 {
+    if (Value & cards[2]) & (Value & cards[3]) != 0 || (Value & cards[3]) & (Value & cards[4]) != 0 {
+        return cards[3]
     }
 
     return 0
@@ -220,71 +264,147 @@ func suit_to_string(card uint32) string {
 }
 
 func value_to_string(card uint32) string {
-    return values[Value & card]
+    return values[(Face | Value) & card]
 }
 
-func evaluate(cards [5]uint32) {
+func evaluate(cards [5]uint32) string {
     fmt.Println("Cards:", cards_to_string(cards))
 
     // Sort cards by face value from largest to smallest.
     cards = sort(cards)
-    fmt.Println("Sorted:", cards_to_string(cards))
+    // fmt.Println("Sorted:", cards_to_string(cards))
 
     // Check for flush.
     flush_suit := flush(cards)
-    fmt.Println("Flush suit:", suit_to_string(flush_suit))
 
     // Check for straight.
     straight_high_card := straight(cards)
-    fmt.Println("Straight high card:", value_to_string(straight_high_card))
 
+    // 0xFF00 0000
     if flush_suit != 0 && straight_high_card != 0 && straight_high_card == Ace {
-        fmt.Println("Royal straight flush,", value_to_string(straight_high_card), "high")
-        return
+        fmt.Println((Face & straight_high_card | flush_suit) << 24)
+        return "Royal straight flush, " + value_to_string(straight_high_card) + " high"
     }
 
+    // 0xFF00 0000
     if flush_suit != 0 && straight_high_card != 0 {
-        fmt.Println("Straight flush,", value_to_string(straight_high_card), "high")
-        return
+        fmt.Println((Face & straight_high_card | flush_suit) << 24)
+        return "Straight flush, " + value_to_string(straight_high_card) + " high"
     }
 
-    // Four of a kind? return
+    four_of_a_kind_card := four_of_a_kind(cards)
+    // 0xF000 0000
+    if four_of_a_kind_card != 0 {
+        fmt.Println((Face & four_of_a_kind_card) << 24)
+        return "Four of a kind, " + value_to_string(four_of_a_kind_card) + "s"
+    }
+
     // Check for three of a kind.
+    three_of_a_kind_card := three_of_a_kind(cards)
+
     // Check for pair.
-    // Full house? return
-    // Flush? return
+    high_pair_card := high_pair(cards)
+    low_pair_card := low_pair(cards)
 
-    if flush_suit != 0 && straight_high_card != 0 {
-        fmt.Println("Flush,", value_to_string(cards[0]), "high")
-        return
+    // 0xFF0 0000
+    if three_of_a_kind_card != 0 && high_pair_card != 0 && Value & three_of_a_kind_card != Value & high_pair_card {
+        fmt.Println((Face & three_of_a_kind_card) << 20 | (Face & high_pair_card) << 16)
+        return "Full house, " + value_to_string(three_of_a_kind_card) + "s full of " + value_to_string(high_pair_card) + "s"
+    }
+    if three_of_a_kind_card != 0 && low_pair_card != 0 && Value & three_of_a_kind_card != Value & low_pair_card {
+        fmt.Println((Face & three_of_a_kind_card) << 20 | (Face & low_pair_card) << 16)
+        return "Full house, " + value_to_string(three_of_a_kind_card) + "s full of " + value_to_string(low_pair_card) + "s"
     }
 
+    // 0xF0 0000
+    if flush_suit != 0 {
+        fmt.Println((Face & cards[0]) << 16)
+        return "Flush, " + value_to_string(cards[0]) + " high"
+    }
+
+    // 0xF 0000
     if straight_high_card != 0 {
-        fmt.Println("Straight,", value_to_string(straight_high_card), "high")
-        return
+        fmt.Println((Face & straight_high_card) << 12)
+        return "Straight, " + value_to_string(straight_high_card) + " high"
     }
 
-    // Three of a kind? return
-    // Two pair? return
-    // One pair? return
-    // return high card
-    fmt.Println("High card,", value_to_string(cards[0]), "high")
+    // 0xF000
+    if three_of_a_kind_card != 0 {
+        fmt.Println((Face & three_of_a_kind_card) << 8)
+        return "Three of a kind, " + value_to_string(three_of_a_kind_card) + "s"
+    }
+
+    // 0xFF0
+    if high_pair_card != 0 && low_pair_card != 0 {
+        fmt.Println(((Face & high_pair_card) << 4) | (Face & low_pair_card))
+        return "Two pair, " + value_to_string(high_pair_card) + "s and " + value_to_string(low_pair_card) + "s"
+    }
+
+    // 0xF0
+    if high_pair_card != 0 {
+        fmt.Println((Face & high_pair_card))
+        return "Pair of " + value_to_string(high_pair_card) + "s"
+    }
+    if low_pair_card != 0 {
+        fmt.Println((Face & low_pair_card))
+        return "Pair of " + value_to_string(low_pair_card) + "s"
+    }
+
+    // 0xF
+    fmt.Println((Face & cards[0]) >> 4)
+    return "High card " + value_to_string(cards[0])
 }
 
 func main() {
-    fmt.Println("Straight, king high")
-    evaluate([5]uint32{NineClubs, TenClubs, KingSpades, JackClubs, QueenSpades})
+    fmt.Println(evaluate([5]uint32{AceClubs, AceSpades, AceDiamonds, QueenSpades, AceHearts}))
+    fmt.Println("Four of a kind, aces")
     fmt.Println()
 
-    fmt.Println("Straight, ace high")
-    evaluate([5]uint32{AceSpades, TenClubs, KingSpades, JackClubs, QueenSpades})
-    fmt.Println()
-
-    fmt.Println("Straight, five high")
-    evaluate([5]uint32{AceSpades, TwoClubs, ThreeClubs, FourClubs, FiveClubs})
-    fmt.Println()
-
+    fmt.Println(evaluate([5]uint32{SixClubs, TwoClubs, ThreeClubs, FourClubs, FiveClubs}))
     fmt.Println("Straight flush, six high")
-    evaluate([5]uint32{SixClubs, TwoClubs, ThreeClubs, FourClubs, FiveClubs})
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{AceClubs, TwoClubs, ThreeClubs, FourClubs, FiveClubs}))
+    fmt.Println("Straight flush, five high")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{AceClubs, AceSpades, AceDiamonds, KingClubs, KingSpades}))
+    fmt.Println("Full house, aces full of kings")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{AceSpades, TenClubs, KingSpades, JackClubs, QueenSpades}))
+    fmt.Println("Straight, ace high")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{NineClubs, TenClubs, KingSpades, JackClubs, QueenSpades}))
+    fmt.Println("Straight, king high")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{AceSpades, TwoClubs, ThreeClubs, FourClubs, FiveClubs}))
+    fmt.Println("Straight, five high")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{KingClubs, AceClubs, AceSpades, QueenSpades, KingSpades}))
+    fmt.Println("Two pair, aces and kings")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{KingClubs, AceClubs, EightClubs, QueenSpades, AceSpades}))
+    fmt.Println("Pair of aces")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{KingClubs, AceHearts, EightClubs, QueenSpades, AceSpades}))
+    fmt.Println("Pair of aces")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{KingClubs, AceClubs, EightClubs, QueenSpades, KingSpades}))
+    fmt.Println("Pair of kings")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{AceClubs, QueenSpades, TenClubs, EightClubs, SixClubs}))
+    fmt.Println("High card ace")
+    fmt.Println()
+
+    fmt.Println(evaluate([5]uint32{SevenClubs, FiveSpades, FourClubs, ThreeClubs, TwoClubs}))
+    fmt.Println("High card seven")
     fmt.Println()
 }

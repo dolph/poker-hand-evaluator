@@ -269,7 +269,12 @@ func main() {
     }
 
     fmt.Println(cards_to_string(hand))
+
+    start := time.Now()
     evaluation := handeval.Evaluate(hand)
+    end := time.Now()
+
     fmt.Println(evaluation)
     fmt.Println(handeval.ToString(evaluation))
+    fmt.Println("Time taken:", end.Sub(start))
 }
